@@ -1,4 +1,5 @@
 import json
+
 from collections import OrderedDict
 from django.contrib.syndication.views import Feed
 from django.utils.feedgenerator import (
@@ -146,14 +147,35 @@ class BasicFeed(Feed):
         item_description_field = feed_app_settings.feed_item_description_field
         item_content_field = feed_app_settings.feed_item_content_field
 
+    def __call__(self, request):
+        self.request = request
+        return super(BasicFeed, self).__call__(request)
+
     def items(self):
+        CategoryPages = apps.get_model('website.CategoryPage').objects.live()
+        category = self.request.GET.get('category', None)
+
         if feed_item_date_field:
-            return feed_model.objects.live().order_by(
-                '-' + feed_item_date_field)
+            if not category:
+                subpages = feed_model.objects.live().order_by('-' + feed_item_date_field)
+            else:
+                category.strip('/')
+                for obj in CategoryPages:
+                    if obj.title.lower() == category.lower():
+                        subpages = feed_model.objects.live().child_of(obj).order_by('-' + feed_item_date_field)
+            return subpages
         else:
-            return feed_model.objects.live().order_by('-date')
+            if not category:
+                subpages = feed_model.objects.live().order_by('-date')
+            else:
+                category.strip('/')
+                for obj in CategoryPages:
+                    if obj.title.lower() == category.lower():
+                        subpages = feed_model.objects.live().child_of(obj).order_by('-date')
+            return subpages
 
     def item_pubdate(self, item):
+
         if feed_item_date_field:
             if is_date_field_datetime:
                 return getattr(item, feed_item_date_field)
@@ -194,16 +216,37 @@ class ExtendedFeed(Feed):
         item_description_field = feed_app_settings.feed_item_description_field
         item_content_field = feed_app_settings.feed_item_content_field
 
+    def __call__(self, request):
+        self.request = request
+        return super(ExtendedFeed, self).__call__(request)
+
     def get_site_url(self):
         site = Site.objects.get(is_default_site=True)
         return site.root_url
 
     def items(self):
+        CategoryPages = apps.get_model('website.CategoryPage').objects.live()
+        category = self.request.GET.get('category', None)
+
         if feed_item_date_field:
-            return feed_model.objects.live().order_by(
-                '-' + feed_item_date_field)
+           if not category:
+               subpages = feed_model.objects.live().order_by('-' + feed_item_date_field)
+           else:
+               category.strip('/')
+               for obj in CategoryPages:
+                   if obj.title.lower() == category.lower():
+                       subpages = feed_model.objects.live().child_of(obj).order_by('-' + feed_item_date_field)
+           return subpages
         else:
-            return feed_model.objects.live().order_by('-date')
+           if not category:
+               subpages = feed_model.objects.live().order_by('-date')
+           else:
+               category.strip('/')
+               for obj in CategoryPages:
+                   if obj.title.lower() == category.lower():
+                       subpages = feed_model.objects.live().child_of(obj).order_by('-date')
+           return subpages
+
 
     def item_pubdate(self, item):
         if feed_item_date_field:
